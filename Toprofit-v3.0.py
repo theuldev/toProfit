@@ -28,19 +28,10 @@ from tkinter import *
 import string
 from selenium_stealth import stealth
 from PIL import Image
-import wget
 import subprocess
-import shutil
-import platform
 app = Flask(__name__)
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
-import asyncio
-
-UPDATE_URL = "https://github.com/theuldev/toProfit/blob/main/Toprofit-v3.1.exe?raw=true"
-LOCAL_EXECUTABLE = "Toprofit-v3.1.exe"  # Nome do executável atual
-TEMP_DOWNLOAD_PATH = "temp/Toprofit-v3.1.exe"  # Caminho temporário para download
-UPDATE_LOCK = "update_completed.lock"  # Arquivo de marcação para verificar se atualização já ocorreu
 
 
 url_add_user = ""
@@ -48,6 +39,9 @@ url_consultar_mac_user = ""
 url_consultar_chave = ""
 
 url_main = "http://http://146.190.41.205:5000/toprofit"
+UPDATER_EXECUTABLE = 'updater.exe'
+CURRENT_VERSION = "v3.0" 
+
 def start_in_multithread(function, *args, **kwargs):
     def wrapper():
         try:
@@ -3231,55 +3225,7 @@ def app_principal():
 
     janela.mainloop()
 
-async def check_for_updates():
-    # Verifica se o lock de atualização existe para evitar repetição
-    if os.path.exists(UPDATE_LOCK):
-        with open(UPDATE_LOCK) as lock_file:
-            last_update = datetime.strptime(lock_file.read().strip("last_update:"), "%Y-%m-%dT%H:%M:%S")
-            if last_update > datetime.now() - timedelta(hours=1):
-                print("Atualização já realizada recentemente.")
-                main()
-
-    try:
-        os.makedirs("temp", exist_ok=True)
-        print("Baixando atualização...")
-        wget.download(UPDATE_URL, TEMP_DOWNLOAD_PATH)
-        print("\nAtualização baixada com sucesso.")
-        
-        await apply_update()
-        
-    except Exception as ex:
-        print("Erro ao baixar atualização:", ex)
-        sys.exit()
-
-async def apply_update():
-    try:
-        if os.path.exists(LOCAL_EXECUTABLE):
-            os.remove(LOCAL_EXECUTABLE)
-        
-        shutil.move(TEMP_DOWNLOAD_PATH, LOCAL_EXECUTABLE)
-        print("Aplicação atualizada com sucesso.")
-        
-        # Cria o arquivo de lock para sinalizar que a atualização foi feita
-        with open(UPDATE_LOCK, 'w') as lock_file:
-            lock_file.write("last_update:" + datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
-        
-        restart_application()  # Chama a funço normalmente
-        
-    except Exception as ex:
-        print("Erro ao aplicar a atualização:", ex)
-        sys.exit()
-
-def restart_application():
-    try:
-        print("Reiniciando a aplicação...")
-        # Substitui o processo atual pelo novo executável
-        sys.stdout.flush()
-        os.execv(LOCAL_EXECUTABLE, [LOCAL_EXECUTABLE] + sys.argv[1:])
-    except Exception as ex:
-        print("Erro ao reiniciar a aplicação:", ex)
-        sys.exit()
-
+    
 def main():
     acesso, mensagem = consultar_permissao_computador()
     if acesso:
@@ -3287,5 +3233,25 @@ def main():
     else:
         login_app()
 
-# Verifica por atualizações no início do programa
-asyncio.run(check_for_updates())
+def is_update_needed():
+    # Aqui você deve implementar a lógica para verificar se uma atualização é necessária.
+    # Isso pode incluir verificar a versão do executável local ou fazer uma requisição à API.
+    remote_version = "v3.1"  # Simulação de versão remota (normalmente você faria uma requisição para verificar isso)
+
+    return remote_version > CURRENT_VERSION
+
+def run_updater():
+    try:
+        process = subprocess.Popen(["python", UPDATER_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        process.wait()  
+    except Exception as ex:
+        print(f"Erro ao iniciar o atualizador: {ex}")
+
+if __name__ == "__main__":
+    if is_update_needed():
+        run_updater()
+    else:
+        main()
+
+
+    
