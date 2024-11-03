@@ -35,10 +35,12 @@ import platform
 app = Flask(__name__)
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
+import asyncio
 
-UPDATE_URL = "https://github.com/theuldev/ToProfit/blob/main/zip/Toprofit-v3.1.zip"
-LOCAL_EXECUTABLE = "Toprofit-v3.0.exe"  # Nome do executável atual
+UPDATE_URL = "https://github.com/theuldev/toProfit/blob/main/Toprofit-v3.1.exe?raw=true"
+LOCAL_EXECUTABLE = "Toprofit-v3.1.exe"  # Nome do executável atual
 TEMP_DOWNLOAD_PATH = "temp/Toprofit-v3.1.exe"  # Caminho temporário para download
+UPDATE_LOCK = "update_completed.lock"  # Arquivo de marcação para verificar se atualização já ocorreu
 
 
 url_add_user = ""
@@ -3229,34 +3231,40 @@ def app_principal():
 
     janela.mainloop()
 
-def check_for_updates():
+async def check_for_updates():
+    # Verifica se o lock de atualização existe para evitar repetição
+    if os.path.exists(UPDATE_LOCK):
+        with open(UPDATE_LOCK) as lock_file:
+            last_update = datetime.strptime(lock_file.read().strip("last_update:"), "%Y-%m-%dT%H:%M:%S")
+            if last_update > datetime.now() - timedelta(hours=1):
+                print("Atualização já realizada recentemente.")
+                main()
+
     try:
-        # Cria a pasta temporária se ela não existir
         os.makedirs("temp", exist_ok=True)
-        
-        # Baixa a nova versão do executável
         print("Baixando atualização...")
         wget.download(UPDATE_URL, TEMP_DOWNLOAD_PATH)
         print("\nAtualização baixada com sucesso.")
         
-        # Substitui o executável atual pelo novo
-        apply_update()
+        await apply_update()
         
     except Exception as ex:
         print("Erro ao baixar atualização:", ex)
-        main()
+        sys.exit()
 
-def apply_update():
+async def apply_update():
     try:
-        # Substitui o executável antigo pelo novo
         if os.path.exists(LOCAL_EXECUTABLE):
             os.remove(LOCAL_EXECUTABLE)
         
         shutil.move(TEMP_DOWNLOAD_PATH, LOCAL_EXECUTABLE)
         print("Aplicação atualizada com sucesso.")
         
-        # Reinicia o aplicativo com o novo executável
-        restart_application()
+        # Cria o arquivo de lock para sinalizar que a atualização foi feita
+        with open(UPDATE_LOCK, 'w') as lock_file:
+            lock_file.write("last_update:" + datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+        
+        restart_application()  # Chama a funço normalmente
         
     except Exception as ex:
         print("Erro ao aplicar a atualização:", ex)
@@ -3264,11 +3272,10 @@ def apply_update():
 
 def restart_application():
     try:
-        # Inicia o novo executável e fecha o aplicativo atual
-        
-        subprocess.Popen([LOCAL_EXECUTABLE], shell=True)
-        print("Aplicação reiniciada com a nova versão.")
-        sys.exit()  # Fecha o processo atual
+        print("Reiniciando a aplicação...")
+        # Substitui o processo atual pelo novo executável
+        sys.stdout.flush()
+        os.execv(LOCAL_EXECUTABLE, [LOCAL_EXECUTABLE] + sys.argv[1:])
     except Exception as ex:
         print("Erro ao reiniciar a aplicação:", ex)
         sys.exit()
@@ -3281,4 +3288,4 @@ def main():
         login_app()
 
 # Verifica por atualizações no início do programa
-check_for_updates()
+asyncio.run(check_for_updates())
