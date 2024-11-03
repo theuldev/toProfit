@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>Atualizações do Aplicativo</title>
+        <link>https://github.com/seu-usuario/seu-repositorio/releases/latest</link>
+        <description>Atualizações para o Aplicativo</description>
+        <item>
+            <title>Versão 1.1</title>
+            <description>Nova versão com melhorias e correções.</description>
+            <pubDate>Fri, 01 Nov 2024 00:00:00 +0000</pubDate>
+            <enclosure url="https://github.com/theuldev/Toprofit/blob/main/Toprofit-v3.1.exe"
+                       sparkle:version="1.1"
+                       sparkle:os="windows"
+                       length="12345678"
+                       type="application/octet-stream"/>
+        </item>
+    </channel>
+</rss>
