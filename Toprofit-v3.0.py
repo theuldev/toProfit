@@ -29,6 +29,7 @@ import string
 from selenium_stealth import stealth
 from PIL import Image
 import subprocess
+import re  
 app = Flask(__name__)
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -3232,17 +3233,19 @@ def main():
         app_principal()
     else:
         login_app()
-
+def get_version_from_filename(filename):
+    match = re.search(r"v(\d+\.\d+)", filename)
+    if match:
+        return match.group(1) 
+    return None 
 def is_update_needed():
-    # Aqui você deve implementar a lógica para verificar se uma atualização é necessária.
-    # Isso pode incluir verificar a versão do executável local ou fazer uma requisição à API.
-    remote_version = "v3.1"  # Simulação de versão remota (normalmente você faria uma requisição para verificar isso)
+    remote_version = "v3.1" 
 
     return remote_version > CURRENT_VERSION
 
 def run_updater():
     try:
-        process = subprocess.Popen(["python", UPDATER_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        process = subprocess.Popen([UPDATER_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
         process.wait()  
     except Exception as ex:
         print(f"Erro ao iniciar o atualizador: {ex}")
