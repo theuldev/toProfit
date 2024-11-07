@@ -30,6 +30,7 @@ from selenium_stealth import stealth
 from PIL import Image
 import subprocess
 import re  
+import time
 app = Flask(__name__)
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -41,7 +42,6 @@ url_consultar_chave = ""
 
 url_main = "http://http://146.190.41.205:5000/toprofit"
 UPDATER_EXECUTABLE = 'updater.exe'
-CURRENT_VERSION = "v3.0" 
 
 def start_in_multithread(function, *args, **kwargs):
     def wrapper():
@@ -3226,35 +3226,38 @@ def app_principal():
 
     janela.mainloop()
 
-    
 def main():
     acesso, mensagem = consultar_permissao_computador()
     if acesso:
         app_principal()
     else:
         login_app()
+
 def get_version_from_filename(filename):
     match = re.search(r"v(\d+\.\d+)", filename)
     if match:
-        return match.group(1) 
+        return match.group(1)
     return None 
-def is_update_needed():
-    remote_version = "v3.1" 
 
-    return remote_version > CURRENT_VERSION
+def is_update_needed():
+    remote_version = "3.1"  
+    local_version = get_version_from_filename(os.path.basename(sys.argv[0]))
+    if local_version is None:
+        print("Não foi possível determinar a versão local a partir do nome do arquivo.")
+        return False
+    return remote_version > local_version
 
 def run_updater():
     try:
-        process = subprocess.Popen([UPDATER_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
-        process.wait()  
+        print("Iniciando o atualizador...")
+        os.system(UPDATER_EXECUTABLE)
+        sys.exit()
     except Exception as ex:
         print(f"Erro ao iniciar o atualizador: {ex}")
 
-if __name__ == "__main__":
-    if is_update_needed():
-        run_updater()
-    else:
-        main()
-
-
+if is_update_needed():
+    run_updater()            
+    sys.exit()
+else:
+    main()
     

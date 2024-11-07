@@ -5,33 +5,62 @@ import logging
 import wget
 import shutil
 import subprocess
+import re
+import customtkinter as ctk
+import threading
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 UPDATE_URL = "https://github.com/theuldev/toProfit/blob/main/Toprofit-v3.1.exe?raw=true"
-LOCAL_EXECUTABLE = "Toprofit-v3.0.exe" 
+LOCAL_DIRECTORY = "." 
 TEMP_DOWNLOAD_PATH = "temp/Toprofit-latest.exe" 
-CURRENT_VERSION = "v3.0" 
-NEW_LOCAL_EXECUTABLE = "Toprofit-v3.1.exe" 
-def check_for_updates():
-    remote_version = "v3.1"  
+NEW_LOCAL_EXECUTABLE = "Toprofit-v3.1.exe"
 
-    if remote_version > CURRENT_VERSION:
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+# Funções do processo de atualização
+def find_executable_with_version(directory, version_pattern):
+    for filename in os.listdir(directory):
+        if re.search(version_pattern, filename):
+            return os.path.join(directory, filename)
+    return None
+
+def check_for_updates():
+    local_executable = find_executable_with_version(LOCAL_DIRECTORY, r"Toprofit-v(\d+\.\d+)\.exe")
+    if not local_executable:
+        logging.error("Executável local não encontrado.")
+        return
+    
+    local_version = get_version_from_filename(local_executable)
+    remote_version = "3.1"
+
+    if local_version and remote_version > local_version:
         logging.info(f"Nova versão disponível: {remote_version}. Atualizando...")
-        download_update()
+        start_download()
     else:
         logging.info("Você já está na versão mais recente.")
-        run_application()
+        run_application(local_executable)
+
+def get_version_from_filename(filename):
+    match = re.search(r"v(\d+\.\d+)", filename)
+    if match:
+        return match.group(1)
+    return None
+
+def download_callback(current, total, bar):
+    if total > 0:
+        percent = current / total
+        progress_bar.set(percent)
+        status_label.configure(text=f"Baixando... {int(percent * 100)}%")
 
 def download_update():
     try:
         os.makedirs("temp", exist_ok=True)
         logging.info("Baixando atualização...")
-        wget.download(UPDATE_URL, TEMP_DOWNLOAD_PATH)
+        wget.download(UPDATE_URL, TEMP_DOWNLOAD_PATH, bar=download_callback)
         logging.info("Atualização baixada com sucesso.")
-        
         apply_update()
-        
     except Exception as ex:
         logging.error("Erro ao baixar atualização: %s", ex)
         sys.exit()
@@ -39,24 +68,21 @@ def download_update():
 def apply_update():
     try:
         terminate_existing_processes()
-
-        if os.path.exists(LOCAL_EXECUTABLE):
+        if os.path.exists(NEW_LOCAL_EXECUTABLE):
             logging.info("Deletando o executável antigo...")
-            os.remove(LOCAL_EXECUTABLE)
+            os.remove(NEW_LOCAL_EXECUTABLE)
 
         shutil.move(TEMP_DOWNLOAD_PATH, NEW_LOCAL_EXECUTABLE)
         logging.info("Aplicação atualizada com sucesso.")
         restart_application()
-        
     except Exception as ex:
         logging.error("Erro ao aplicar a atualização: %s", ex)
         sys.exit()
 
 def terminate_existing_processes():
-    """Finaliza qualquer processo existente do executável."""
     for proc in psutil.process_iter():
         try:
-            if proc.name() == LOCAL_EXECUTABLE:
+            if proc.name() == NEW_LOCAL_EXECUTABLE:
                 logging.info("Finalizando o processo anterior...")
                 proc.terminate()
                 proc.wait()
@@ -65,20 +91,43 @@ def terminate_existing_processes():
 
 def restart_application():
     try:
-        logging.info("Reiniciando a a6plicação...")
-        process = subprocess.Popen([NEW_LOCAL_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
-        process.wait()
-        logging.info("A aplicação foi reiniciada com sucesso.")
+        logging.info("Reiniciando a aplicação...")
+        if os.path.exists(NEW_LOCAL_EXECUTABLE):
+            process = subprocess.Popen([NEW_LOCAL_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            logging.info("A aplicação foi reiniciada com sucesso.")
+        else:
+            logging.error("O executável não foi encontrado após a atualização.")
         sys.exit()
     except Exception as ex:
         logging.error("Erro ao reiniciar a aplicação: %s", ex)
         sys.exit()
 
-def run_application():
-    """Executa o aplicativo atual."""
-    process = subprocess.Popen([NEW_LOCAL_EXECUTABLE], creationflags=subprocess.CREATE_NEW_CONSOLE)
-    process.wait()
-    sys.exit()
+def run_application(executable_path):
+    if os.path.exists(executable_path):
+        os.system(executable_path)
+        sys.exit()
+    else:
+        logging.error("O executável não existe: %s", executable_path)
+        sys.exit()
 
-if __name__ == "__main__":
-    check_for_updates()
+def start_download():
+    status_label.configure(text="Iniciando download...")
+    threading.Thread(target=download_update).start()
+
+app = ctk.CTk()
+app.title("Atualizador de Software")
+app.geometry("400x300")
+
+title_label = ctk.CTkLabel(app, text="Atualizador de Software", font=("Arial", 18))
+title_label.pack(pady=20)
+
+status_label = ctk.CTkLabel(app, text="Verificando atualizações...", font=("Arial", 14))
+status_label.pack(pady=10)
+
+progress_bar = ctk.CTkProgressBar(app, width=300)
+progress_bar.pack(pady=20)
+progress_bar.set(0)
+
+threading.Thread(target=check_for_updates).start()
+
+app.mainloop()
