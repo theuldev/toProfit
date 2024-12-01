@@ -45,6 +45,7 @@ file_path = "Toprofit.exe"
 url_main = "http://http://146.190.41.205:5000/toprofit"
 UPDATER_EXECUTABLE = os.path.join(os.getcwd(), "updater.exe") 
 UPDATE_GITHUB_URL = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits?path={file_path}"
+LAST_COMMIT_FILE = "last_commit.txt"
 
 def start_in_multithread(function, *args, **kwargs):
     def wrapper():
@@ -3236,29 +3237,30 @@ def main():
     else:
         login_app()
 
-def get_local_file_date():
-    """Obtém a data de modificação do executável local."""
-    local_executable = sys.argv[0]
-    if os.path.isfile(local_executable):
-        return datetime.fromtimestamp(os.path.getmtime(local_executable))
+
+def get_local_commit_date():
+    if os.path.exists(LAST_COMMIT_FILE):
+        with open(LAST_COMMIT_FILE, "r") as file:
+            try:
+                return datetime.fromisoformat(file.read().strip())
+            except ValueError:
+                print("Formato de data inválido no arquivo local.")
     return None
 
 def get_remote_commit_date():
-    """Obtém a data do último commit do executável remoto usando a API do GitHub."""
     try:
         response = requests.get(UPDATE_GITHUB_URL)
         response.raise_for_status()
         commits = response.json()
         if commits:
             commit_date = commits[0]["commit"]["committer"]["date"]
-            return datetime.fromisoformat(commit_date.replace("Z", "+00:00"))
+            return datetime.fromisoformat(commit_date.replace("Z", "+00:00")).replace(tzinfo=None)
     except Exception as ex:
         print(f"Erro ao obter a data do commit remoto: {ex}")
     return None
 
 def is_update_needed():
-    """Verifica se uma atualização é necessária comparando as datas de commit."""
-    local_date = get_local_file_date()
+    local_date = get_local_commit_date()
     remote_date = get_remote_commit_date()
 
     if not remote_date:
@@ -3266,14 +3268,12 @@ def is_update_needed():
         return False
 
     if not local_date or remote_date > local_date:
-        print("Atualização necessária.")
         return True
 
     print("Nenhuma atualização necessária.")
     return False
 
 def run_updater():
-    """Inicia o processo de atualização."""
     try:
         if not os.path.isfile(UPDATER_EXECUTABLE):
             raise FileNotFoundError(f"O arquivo '{UPDATER_EXECUTABLE}' não foi encontrado.")

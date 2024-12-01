@@ -27,7 +27,6 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 def get_remote_commit_date():
-    """Obtém a data do último commit associado ao arquivo remoto no GitHub."""
     try:
         logging.info("Consultando o GitHub para obter informações do commit...")
         response = requests.get(GITHUB_API_URL)
@@ -44,18 +43,18 @@ def get_remote_commit_date():
         logging.error(f"Erro ao consultar o GitHub: {ex}")
         return None
 
-def get_local_file_date():
-    """Obtém a data da última modificação do executável local."""
-    if os.path.exists(LOCAL_EXECUTABLE):
-        return datetime.fromtimestamp(os.path.getmtime(LOCAL_EXECUTABLE))
-    else:
-        logging.warning("Arquivo local não encontrado.")
-        return None
-
+def get_local_commit_date():
+    """Lê a data do último commit salva localmente."""
+    if os.path.exists(LAST_COMMIT_FILE):
+        with open(LAST_COMMIT_FILE, "r") as file:
+            try:
+                return datetime.fromisoformat(file.read().strip())
+            except ValueError:
+                logging.warning("Formato de data inválido no arquivo local.")
+    return None
 def check_for_updates():
-    """Verifica se há atualizações baseadas na data do commit."""
     remote_date = get_remote_commit_date()
-    local_date = get_local_file_date()
+    local_date = get_local_commit_date()
 
     if not remote_date:
         logging.error("Não foi possível obter a data do commit remoto.")
