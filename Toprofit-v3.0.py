@@ -39,9 +39,12 @@ ctk.set_default_color_theme("dark-blue")
 url_add_user = ""
 url_consultar_mac_user = ""
 url_consultar_chave = ""
-
+repo_owner = "theuldev"
+repo_name = "toProfit"
+file_path = "Toprofit.exe"
 url_main = "http://http://146.190.41.205:5000/toprofit"
-UPDATER_EXECUTABLE = 'updater.exe'
+UPDATER_EXECUTABLE = os.path.join(os.getcwd(), "updater.exe") 
+UPDATE_GITHUB_URL = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits?path={file_path}"
 
 def start_in_multithread(function, *args, **kwargs):
     def wrapper():
@@ -3233,31 +3236,56 @@ def main():
     else:
         login_app()
 
-def get_version_from_filename(filename):
-    match = re.search(r"v(\d+\.\d+)", filename)
-    if match:
-        return match.group(1)
-    return None 
+def get_local_file_date():
+    """Obtém a data de modificação do executável local."""
+    local_executable = sys.argv[0]
+    if os.path.isfile(local_executable):
+        return datetime.fromtimestamp(os.path.getmtime(local_executable))
+    return None
+
+def get_remote_commit_date():
+    """Obtém a data do último commit do executável remoto usando a API do GitHub."""
+    try:
+        response = requests.get(UPDATE_GITHUB_URL)
+        response.raise_for_status()
+        commits = response.json()
+        if commits:
+            commit_date = commits[0]["commit"]["committer"]["date"]
+            return datetime.fromisoformat(commit_date.replace("Z", "+00:00"))
+    except Exception as ex:
+        print(f"Erro ao obter a data do commit remoto: {ex}")
+    return None
 
 def is_update_needed():
-    remote_version = "3.1"  
-    local_version = get_version_from_filename(os.path.basename(sys.argv[0]))
-    if local_version is None:
-        print("Não foi possível determinar a versão local a partir do nome do arquivo.")
+    """Verifica se uma atualização é necessária comparando as datas de commit."""
+    local_date = get_local_file_date()
+    remote_date = get_remote_commit_date()
+
+    if not remote_date:
+        print("Não foi possível obter a data do commit remoto.")
         return False
-    return remote_version > local_version
+
+    if not local_date or remote_date > local_date:
+        print("Atualização necessária.")
+        return True
+
+    print("Nenhuma atualização necessária.")
+    return False
 
 def run_updater():
+    """Inicia o processo de atualização."""
     try:
-        print("Iniciando o atualizador...")
-        os.system(UPDATER_EXECUTABLE)
-        sys.exit()
+        if not os.path.isfile(UPDATER_EXECUTABLE):
+            raise FileNotFoundError(f"O arquivo '{UPDATER_EXECUTABLE}' não foi encontrado.")
+
+        CREATE_NO_WINDOW = 0x08000000
+        subprocess.call([UPDATER_EXECUTABLE], creationflags=CREATE_NO_WINDOW)
     except Exception as ex:
         print(f"Erro ao iniciar o atualizador: {ex}")
 
+# Verifica se uma atualização é necessária antes de continuar com a execução
 if is_update_needed():
-    run_updater()            
+    run_updater()
     sys.exit()
 else:
     main()
-    
