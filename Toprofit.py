@@ -3288,7 +3288,6 @@ def is_update_needed():
         return False
 
     if not local_date or remote_date > local_date:
-        update_commit_file(remote_date)
         return True
 
     print("Nenhuma atualização necessária.")
