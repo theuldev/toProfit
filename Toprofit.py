@@ -3292,6 +3292,51 @@ def is_update_needed():
 
     print("Nenhuma atualização necessária.")
     return False
+def check_update_permission():
+    def on_yes():
+        confirmation_window.destroy()
+        run_updater()
+        sys.exit()
+
+    def on_no():
+        confirmation_window.destroy()
+        main()
+
+    confirmation_window = ctk.CTk()
+    confirmation_window.title("toProfit")
+    confirmation_window.geometry("400x200")
+    confirmation_window.resizable(False, False)
+
+    ctk.CTkLabel(
+        confirmation_window, 
+        text="Deseja atualizar a aplicação?",  
+        text_color="white", 
+        font=("arial bold", 16)
+    ).pack(pady=20)
+
+    button_frame = ctk.CTkFrame(confirmation_window)
+    button_frame.pack(pady=20)
+
+    btn_primary = ctk.CTkButton(
+        button_frame, 
+        text="Sim", 
+        text_color="white", 
+        font=("arial bold", 14), 
+        command=on_yes
+    )
+    btn_primary.pack(side="left", padx=10)
+
+    btn_secondary = ctk.CTkButton(
+        button_frame, 
+        text="Não", 
+        text_color="white", 
+        font=("arial bold", 14), 
+        command=on_no
+    )
+    btn_secondary.pack(side="left", padx=10)
+
+    confirmation_window.mainloop()
+    
 
 def run_updater():
     try:
@@ -3304,7 +3349,8 @@ def run_updater():
         print(f"Erro ao iniciar o atualizador: {ex}")
 
 if is_update_needed():
-    run_updater()
-    sys.exit()
+    check_update_permission()
+    #run_updater()
+    #sys.exit()
 else:
     main()  
